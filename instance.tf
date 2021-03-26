@@ -78,3 +78,41 @@ resource "google_compute_autoscaler" "scalling-1" {
     # }
   }
 }
+resource "google_compute_target_pool" "pool1" {
+  provider = google-beta
+  name = "my-target-pool-1"
+
+  health_checks = [
+    google_compute_http_health_check.default.name,
+  ]
+}
+
+#legacy special for lb
+resource "google_compute_http_health_check" "default" {
+  name         = "authentication-health-check"
+  request_path = "/health_check"
+
+  timeout_sec        = 5
+  check_interval_sec = 60
+}
+
+resource "google_compute_instance_group_manager" "igm-1" {
+  provider = google-beta
+  name = "my-igm-1"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  version {
+    instance_template  = google_compute_instance_template.template.id
+    name               = "primary"
+  }
+
+  target_pools       = [google_compute_target_pool.pool1.id]
+  base_instance_name = "app-nginx"
+  named_port {
+    name = "http"
+    port = 80
+  }
+}
